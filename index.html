@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Blog</title>
+    <script src="pages.js"></script>
+    <style>
+        #content {
+        background: #0000;
+    }
+        /* fix bullshit scroll wheel appearing --> */
+        *, *:before, *:after {
+    box-sizing: border-box;
+        }
+
+        /* Add styles for the navbar and content iframes */
+        #navbar {
+            width: 100%;
+            height: 50px;
+            border: none;
+            position: fixed;
+            top: 0;
+        left: 0;
+        z-index: 1000;
+        }
+
+        #content {
+            width: 100%;
+            height: calc(100vh - 50px);
+            border: none;
+            padding-top: 50px;
+        }
+
+        /* Styles for the custom audio player */
+        .custom-audio-player {
+            position: fixed;
+            right: 10px;
+            bottom: 10px;
+            width: 450px;
+            background-color: #181818;
+            border-radius: 10px;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            color: white;
+        }
+
+        #audioPlayer {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 300px; /* Adjust width to fit content, initially set to 300px */
+            height: auto; /* Initial height, will be adjusted by script */
+        }
+
+        #playerImage {
+    height: 30px;
+    margin-right: 10px;
+}
+
+/* Song selector styling */
+#songSelector {
+    flex-grow: 1;
+    margin-right: 10px;
+    padding: 5px;
+    border: 1px solid #181818;
+    background-color: #181818;
+    color: white;
+    border-radius: 5px;
+    font-size: 14px;
+    max-width: 100px; /* Limiting the width */
+}
+
+/* Style for the play/pause button */
+#playPauseBtn {
+    padding: 8px 12px;
+    font-size: 18px; /* Adjust as needed */
+  	font-weight: bold;
+    background-color: #181818;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-right: 10px;
+    width: 40px; /* Fixed width */
+    height: 40px; /* Fixed height */
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Center the icon */
+    text-align: center; /* Ensure text is centered */
+    line-height: 1; /* Adjust line height for vertical alignment */
+}
+
+/* Style for the seek bar (progress bar) */
+#seekBar {
+    flex-grow: 1; /* Adjusted for more space */
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgb(56, 56, 56);
+    height: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 0 5px; /* Reduced margin */
+}
+
+#seekBar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: black; /* Changed to black */
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Styles for the slider thumb in Mozilla-based browsers */
+#seekBar::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    background: black; /* Changed to black */
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Container for the time display */
+#timeContainer {
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* Allows more space for time display */
+}
+
+/* Time display */
+#currentTime, #duration {
+    font-family: 'Roboto', sans-serif;
+    white-space: nowrap;
+    font-size: 14px;
+    margin-left: 5px;
+}
+
+    </style>
+</head>
+<body>
+    <iframe id="navbar" src="navbar.html"></iframe>
+    <iframe id="content" src="home.html"></iframe>
+
+    <div class="custom-audio-player">
+        <img src="media/AWFM.png" alt="AWFM" id="playerImage">
+        <select id="songSelector">
+            <option value="media/SONG.mp3" selected="selected">Song 1</option>
+            <option value="media/SONG2.mp3">Song 2</option>
+            <option value="media/SONG3.mp3">Song 3</option>
+            <!-- Add more songs as needed -->
+        </select>
+        <audio id="audioElement" src="media/SONG.mp3"></audio>
+        <button id="playPauseBtn">▶</button>
+        <input id="seekBar" value="0" type="range">
+        <div id="timeContainer">
+            <span id="currentTime">0:00</span> / <span id="duration">0</span>
+            ⠀
+        </div>
+    </div>
+
+    <script>
+        //  get URL parameters
+        function getParameterByName(name, url = window.location.href) {
+            name = name.replace(/[\[\]]/g, '\\$&');
+            var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+
+        // load home page as default
+        window.onload = function() {
+            var page = getParameterByName('page') || 'home.html';
+            document.getElementById('content').src = page;
+        };
+
+        // height adjustment within the iframes
+        window.addEventListener('message', function(event) {
+            if (event.origin === window.location.origin) {
+                var data = event.data;
+                if (data && data.frameId === 'audioPlayer' && data.height) {
+                    document.getElementById('audioPlayer').style.height = data.height + 'px';
+                }
+            }
+        }, false);
+
+        document.addEventListener('DOMContentLoaded', function() {
+    var audioElement = document.getElementById('audioElement');
+    var playPauseBtn = document.getElementById('playPauseBtn');
+    var seekBar = document.getElementById('seekBar');
+    var currentTimeDisplay = document.getElementById('currentTime');
+    var durationDisplay = document.getElementById('duration');
+    var songSelector = document.getElementById('songSelector');
+
+    // Function to update the time display
+    function updateTimeDisplay() {
+        var currentMinutes = Math.floor(audioElement.currentTime / 60);
+        var currentSeconds = Math.floor(audioElement.currentTime - currentMinutes * 60);
+        var durationMinutes = Math.floor(audioElement.duration / 60);
+        var durationSeconds = Math.floor(audioElement.duration - durationMinutes * 60);
+
+        currentTimeDisplay.textContent = currentMinutes + ':' + (currentSeconds < 10 ? '0' : '') + currentSeconds;
+        durationDisplay.textContent = durationMinutes + ':' + (durationSeconds < 10 ? '0' : '') + durationSeconds;
+    }
+
+    // Play or pause the audio
+    playPauseBtn.addEventListener('click', function() {
+        if (audioElement.paused) {
+            audioElement.play();
+            playPauseBtn.textContent = '⏸';
+        } else {
+            audioElement.pause();
+            playPauseBtn.textContent = '▶';
+        }
+    });
+
+    // Update seek bar as audio plays
+    audioElement.addEventListener('timeupdate', function() {
+        seekBar.value = (audioElement.currentTime / audioElement.duration) * 100;
+        updateTimeDisplay();
+    });
+
+    // Seek in the audio
+    seekBar.addEventListener('input', function() {
+        audioElement.currentTime = (seekBar.value / 100) * audioElement.duration;
+    });
+
+    // Change song
+    songSelector.addEventListener('change', function() {
+        audioElement.src = songSelector.value;
+        audioElement.play();
+        playPauseBtn.textContent = '⏸';
+    });
+
+    // Update duration display when a new song is loaded
+    audioElement.addEventListener('loadedmetadata', function() {
+        updateTimeDisplay();
+    });
+});
+    </script>
+</body>
+</html>
